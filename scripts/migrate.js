@@ -56,10 +56,15 @@ if (fs.existsSync(mergedFile)) {
   console.log(`[정보] db.json 을 기준으로 병합합니다. (없으면 빈 객체)`);
 }
 
+// 백업 API 응답 구조 처리: {timestamp, urls: {...}, users: {...}} or 직접 {shortCode: {...}}
+const urlEntries = (srcDb.urls && typeof srcDb.urls === 'object')
+  ? srcDb.urls
+  : srcDb;
+
 // 병합
 let added = 0;
 let conflict = 0;
-for (const [code, data] of Object.entries(srcDb)) {
+for (const [code, data] of Object.entries(urlEntries)) {
   if (targetDb[code]) {
     conflict++;
     console.log(`[충돌 스킵] shortCode '${code}' 는 이미 존재합니다.`);
