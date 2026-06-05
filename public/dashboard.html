@@ -72,13 +72,23 @@
       <button id="downloadExcelBtn" class="download-excel-btn">엑셀 다운로드</button>
       <button id="adminPageBtn" class="admin-page-btn" style="display: none;">계정관리</button>
     </div>
+    <!-- 통합 검색창 -->
+    <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
+      <input type="text" id="searchInput" placeholder="URL, 메모, 도메인 검색..." oninput="filterAndRender()"
+             style="flex:1; padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+      <button onclick="clearSearch()" title="검색 지우기"
+              style="padding:8px 14px; border:1px solid #ddd; background:#f5f5f5; border-radius:6px; cursor:pointer;">✕</button>
+    </div>
+    <!-- 도메인 필터 탭 (JS로 동적 생성) -->
+    <div id="domainTabs" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;"></div>
     <div class="dashboard-table-wrap">
       <table class="dashboard-table">
         <thead>
           <tr>
             <th style="width: 5%; text-align: center;"></th>
             <th style="width: 15%; text-align: center;">Short URL</th>
-            <th style="width: 30%; text-align: center;">Long URL</th>
+            <th style="width: 27%; text-align: center;">Long URL</th>
+            <th style="width: 11%; text-align: center;">도메인</th>
             <th style="width: 8%; text-align: center;">오늘 방문</th>
             <th style="width: 8%; text-align: center;">누적 방문</th>
             <th style="width: 10%; text-align: center;">사용자</th>

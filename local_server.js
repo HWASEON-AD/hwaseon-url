@@ -321,30 +321,51 @@ const BASE_URL = process.env.NODE_ENV === 'production'
   ? (process.env.DOMAIN || 'https://hwaseon-url.com')
   : `http://localhost:${PORT}`;
 
+// 허용 도메인 목록 (환경변수 or BASE_URL 폴백)
+const ALLOWED_DOMAINS = process.env.ALLOWED_DOMAINS
+  ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim()).filter(Boolean)
+  : [new URL(BASE_URL).host];
+
+// 도메인 목록 반환 (프론트 드롭다운용, 인증 불필요)
+app.get('/api/domains', (_req, res) => {
+  res.json({ domains: ALLOWED_DOMAINS });
+});
+
 app.get('/urls', (req, res) => {
   const db = loadDB();
   const isAdmin = !!req.session.user?.isAdmin;
   const userId = req.session.user?.id || null;
 
+  const baseHost = new URL(BASE_URL).host;
   const urls = Object.keys(db)
     .filter(code => isAdmin || db[code].userId === userId)
-    .map(code => ({ ...db[code], shortCode: code }))
+    // domain 필드 없는 기존 데이터는 BASE_URL 도메인으로 폴백
+    .map(code => ({ ...db[code], shortCode: code, domain: db[code].domain || baseHost }))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   res.json(urls);
 });
 
 app.post('/shorten', (req, res) => {
-  const { url } = req.body || {};
+  const { url, domain } = req.body || {};
   if (!url) return res.status(400).json({ error: 'URL 누락' });
+
+  // 선택 도메인 결정: body.domain이 허용목록에 있으면 사용, 없으면 BASE_URL 도메인으로 폴백
+  const baseHost = new URL(BASE_URL).host;
+  const useSelected = domain && ALLOWED_DOMAINS.includes(domain);
+  const selectedDomain = useSelected ? domain : baseHost;
 
   const db = loadDB();
   let code;
   do { code = generateShortCode(); } while (db[code]);
 
+  // 선택 도메인이 있으면 https로, 없으면 기존 BASE_URL 형식 유지(로컬 http 보존)
+  const shortUrl = useSelected ? `https://${selectedDomain}/${code}` : `${BASE_URL}/${code}`;
+
   db[code] = {
     longUrl: url,
-    shortUrl: `${BASE_URL}/${code}`,
+    shortUrl,
+    domain: selectedDomain,   // ← 추가
     todayVisits: 0,
     totalVisits: 0,
     createdAt: new Date().toISOString(),

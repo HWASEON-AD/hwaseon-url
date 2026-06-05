@@ -1,8 +1,147 @@
+// ===== 멀티도메인: 전역 상태 & 헬퍼 =====
+// 도메인별 배지 색상
+const DOMAIN_COLORS = {
+    'hwaseon-url': '#3b82f6', // 파랑
+    'amos-url': '#22c55e',    // 초록
+    'prmr-url': '#a855f7',    // 보라
+    'iope-url': '#f97316',    // 주황
+};
+function getDomainColor(domain) {
+    const d = domain || '';
+    const key = Object.keys(DOMAIN_COLORS).find(k => d.includes(k));
+    return DOMAIN_COLORS[key] || '#6b7280'; // 기타 회색
+}
+
+let allUrls = [];                 // 서버에서 받은 전체 URL 목록
+let currentDomainFilter = 'all';  // 현재 도메인 탭
+let currentSearchQuery = '';      // 현재 검색어
+
+// 검색어 하이라이트
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlight(text, query) {
+    const safe = escapeHtml(text);
+    if (!query) return safe;
+    const q = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+        return safe.replace(new RegExp(q, 'gi'), m => `<mark>${m}</mark>`);
+    } catch { return safe; }
+}
+
+// 도메인 탭 렌더링 (전체 + 도메인별, 개수 표시)
+function renderDomainTabs() {
+    const tabsEl = document.getElementById('domainTabs');
+    if (!tabsEl) return;
+
+    // 도메인별 개수 집계
+    const counts = {};
+    allUrls.forEach(u => {
+        const d = u.domain || '';
+        counts[d] = (counts[d] || 0) + 1;
+    });
+    const domains = Object.keys(counts).sort();
+
+    const tabs = [{ key: 'all', label: `전체 (${allUrls.length})`, color: '#374151' }];
+    domains.forEach(d => {
+        // 표시용 라벨: 'amos-url.onrender.com' → 'amos-url'
+        const short = (Object.keys(DOMAIN_COLORS).find(k => d.includes(k))) || d;
+        tabs.push({ key: d, label: `${short} (${counts[d]})`, color: getDomainColor(d) });
+    });
+
+    tabsEl.innerHTML = '';
+    tabs.forEach(tab => {
+        const active = currentDomainFilter === tab.key;
+        const btn = document.createElement('button');
+        btn.textContent = tab.label;
+        btn.style.cssText = `padding:6px 12px; border-radius:16px; cursor:pointer; font-size:13px;`
+            + ` border:1px solid ${tab.color};`
+            + (active ? ` background:${tab.color}; color:#fff;` : ` background:#fff; color:${tab.color};`);
+        btn.onclick = () => {
+            currentDomainFilter = tab.key;
+            filterAndRender();
+        };
+        tabsEl.appendChild(btn);
+    });
+}
+
+// 한 행 HTML 생성 (검색어 하이라이트 포함)
+function buildRowHtml(url) {
+    let displayUsername = '비회원';
+    if (url.username) displayUsername = url.username;
+    const domain = url.domain || '';
+    const color = getDomainColor(domain);
+    const shortLabel = (Object.keys(DOMAIN_COLORS).find(k => domain.includes(k))) || domain;
+    const badge = `<span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; color:#fff; background:${color};">${highlight(shortLabel, currentSearchQuery)}</span>`;
+    return `
+        <td class="action-cell" style="width: 5%; text-align: center;">
+            <button class="copy-btn" onclick="copyToClipboard('${url.shortUrl}')" style="padding: 4px 8px; background-color: #1877f2; color: white; border: none; border-radius: 4px; cursor: pointer;">복사</button>
+        </td>
+        <td class="url-cell" style="width: 15%; text-align: center;">
+            <a href="${url.shortUrl}" target="_blank" class="url-link">${highlight(url.shortUrl, currentSearchQuery)}</a>
+        </td>
+        <td class="url-cell" style="width: 27%; text-align: center;">${highlight(url.longUrl, currentSearchQuery)}</td>
+        <td class="domain-cell" style="width: 11%; text-align: center;">${badge}</td>
+        <td class="visits-cell" style="width: 8%; text-align: center;">${url.todayVisits || 0}</td>
+        <td class="visits-cell" style="width: 8%; text-align: center;">${url.totalVisits || 0}</td>
+        <td class="user-cell" style="width: 10%; text-align: center;">${displayUsername}</td>
+        <td class="action-cell" style="width: 7%; text-align: center;">
+            <button class="delete-btn" onclick="deleteUrl('${url.shortCode}')">삭제</button>
+        </td>
+        <td class="action-cell" style="width: 7%; text-align: center;">
+            <button class="detail-btn" onclick="showDetails('${url.shortCode}')">보기</button>
+        </td>
+    `;
+}
+
+// 도메인 탭 + 검색어 필터 적용 후 테이블 렌더
+function filterAndRender() {
+    const searchEl = document.getElementById('searchInput');
+    currentSearchQuery = searchEl ? searchEl.value.trim() : '';
+
+    renderDomainTabs();
+
+    const tbody = document.getElementById('dashboard-tbody');
+    if (!tbody) return;
+
+    const q = currentSearchQuery.toLowerCase();
+    const filtered = allUrls.filter(url => {
+        // 도메인 탭 필터
+        if (currentDomainFilter !== 'all' && (url.domain || '') !== currentDomainFilter) return false;
+        // 검색어 필터 (longUrl, memo, shortCode, domain)
+        if (!q) return true;
+        return [url.longUrl, url.memo, url.shortCode, url.domain]
+            .some(v => (v || '').toString().toLowerCase().includes(q));
+    });
+
+    tbody.innerHTML = '';
+    if (filtered.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="9" style="text-align: center; padding: 20px;">표시할 URL이 없습니다.</td>`;
+        tbody.appendChild(row);
+        return;
+    }
+    filtered.forEach(url => {
+        const row = document.createElement('tr');
+        row.innerHTML = buildRowHtml(url);
+        tbody.appendChild(row);
+    });
+}
+
+// 검색 지우기
+function clearSearch() {
+    const searchEl = document.getElementById('searchInput');
+    if (searchEl) searchEl.value = '';
+    currentSearchQuery = '';
+    filterAndRender();
+}
+
 // URL 목록 로드
 function loadUrls() {
     // 현재 도메인 기반으로 설정
     const baseUrl = window.location.origin;
-    
+
     console.log('URL 목록 로드 시도');
         
     fetch(`${baseUrl}/urls`, {
@@ -28,100 +167,9 @@ function loadUrls() {
         })
         .then(urls => {
             console.log('URL 목록 수신 완료:', urls ? urls.length : 0);
-            const tbody = document.getElementById('dashboard-tbody');
-            tbody.innerHTML = '';
-
-            if (!urls || urls.length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td colspan="8" style="text-align: center; padding: 20px;">
-                        등록된 URL이 없습니다.
-                    </td>
-                `;
-                tbody.appendChild(row);
-                return;
-            }
-
-            // 현재 사용자 정보 가져오기
-            fetch('/api/me', {
-                credentials: 'include',
-                headers: {
-                    'Cache-Control': 'no-cache'
-                }
-            })
-            .then(response => response.json())
-            .then(userData => {
-                let currentUser = '';
-                if (userData && userData.success && userData.user) {
-                    currentUser = userData.user.username;
-                }
-
-                urls.forEach(url => {
-                    // 사용자 정보 표시 - URL 생성자에 따라 다르게 표시
-                    let displayUsername = '비회원';
-                    
-                    // URL에 사용자 정보가 있는 경우
-                    if (url.username) {
-                        displayUsername = url.username;
-                    }
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="action-cell" style="width: 5%; text-align: center;">
-                            <button class="copy-btn" onclick="copyToClipboard('${url.shortUrl}')" style="padding: 4px 8px; background-color: #1877f2; color: white; border: none; border-radius: 4px; cursor: pointer;">복사</button>
-                        </td>
-                        <td class="url-cell" style="width: 15%; text-align: center;">
-                            <a href="${url.shortUrl}" target="_blank" class="url-link">${url.shortUrl}</a>
-                        </td>
-                        <td class="url-cell" style="width: 30%; text-align: center;">${url.longUrl}</td>
-                        <td class="visits-cell" style="width: 8%; text-align: center;">${url.todayVisits || 0}</td>
-                        <td class="visits-cell" style="width: 8%; text-align: center;">${url.totalVisits || 0}</td>
-                        <td class="user-cell" style="width: 10%; text-align: center;">${displayUsername}</td>
-                        <td class="action-cell" style="width: 7%; text-align: center;">
-                            <button class="delete-btn" onclick="deleteUrl('${url.shortCode}')">삭제</button>
-                        </td>
-                        <td class="action-cell" style="width: 7%; text-align: center;">
-                            <button class="detail-btn" onclick="showDetails('${url.shortCode}')">보기</button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            })
-            .catch(error => {
-                // 사용자 정보를 가져오는데 실패해도 URL 목록은 표시
-                console.error('Error getting user info:', error);
-                
-                urls.forEach(url => {
-                    // 사용자 정보 표시 - URL 생성자에 따라 다르게 표시
-                    let displayUsername = '비회원';
-                    
-                    // URL에 사용자 정보가 있는 경우
-                    if (url.username) {
-                        displayUsername = url.username;
-                    }
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="action-cell" style="width: 5%; text-align: center;">
-                            <button class="copy-btn" onclick="copyToClipboard('${url.shortUrl}')" style="padding: 4px 8px; background-color: #1877f2; color: white; border: none; border-radius: 4px; cursor: pointer;">복사</button>
-                        </td>
-                        <td class="url-cell" style="width: 15%; text-align: center;">
-                            <a href="${url.shortUrl}" target="_blank" class="url-link">${url.shortUrl}</a>
-                        </td>
-                        <td class="url-cell" style="width: 30%; text-align: center;">${url.longUrl}</td>
-                        <td class="visits-cell" style="width: 8%; text-align: center;">${url.todayVisits || 0}</td>
-                        <td class="visits-cell" style="width: 8%; text-align: center;">${url.totalVisits || 0}</td>
-                        <td class="user-cell" style="width: 10%; text-align: center;">${displayUsername}</td>
-                        <td class="action-cell" style="width: 7%; text-align: center;">
-                            <button class="delete-btn" onclick="deleteUrl('${url.shortCode}')">삭제</button>
-                        </td>
-                        <td class="action-cell" style="width: 7%; text-align: center;">
-                            <button class="detail-btn" onclick="showDetails('${url.shortCode}')">보기</button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            });
+            // 전역 저장 후 도메인 탭 + 검색 필터 적용하여 렌더
+            allUrls = Array.isArray(urls) ? urls : [];
+            filterAndRender();
         })
         .catch(error => {
             console.error('Error:', error);

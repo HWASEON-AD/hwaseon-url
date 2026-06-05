@@ -69,14 +69,18 @@ shortenBtn.addEventListener('click', async function(e) {
   // 로그인 상태 확인
   console.log('URL 단축 전 세션 쿠키 확인');
   
+  // 선택된 도메인 가져오기 (드롭다운, 없으면 미전달 → 서버가 BASE_URL로 폴백)
+  const domainSelectEl = document.getElementById('domainSelect');
+  const selectedDomain = domainSelectEl ? domainSelectEl.value : '';
+
   try {
     const response = await fetch(`${API_BASE_URL}/shorten`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache'
       },
-      body: JSON.stringify({ url: longUrl }),
+      body: JSON.stringify(selectedDomain ? { url: longUrl, domain: selectedDomain } : { url: longUrl }),
       credentials: 'include' // 세션 쿠키 포함
     });
 
