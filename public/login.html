@@ -6,133 +6,125 @@
   <title>로그인 | Hwaseon URL</title>
   <link rel="stylesheet" href="url.css" />
   <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
     body {
-      background-color: #f5f8ff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f7fa;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
       margin: 0;
-      padding: 0;
+      padding: 20px;
     }
     .login-container {
       width: 380px;
-      padding: 35px 40px;
+      padding: 36px 36px 28px;
       background-color: #fff;
       border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-      animation: fadeIn 0.5s ease;
+      box-shadow: 0 2px 16px rgba(0,0,0,.08);
+      animation: fadeIn 0.4s ease;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     .login-container h1 {
       text-align: center;
-      margin-bottom: 25px;
-      color: #333;
-      font-size: 24px;
-      font-weight: 600;
+      margin-bottom: 24px;
+      color: #1565c0;
+      font-size: 22px;
+      font-weight: 800;
     }
     .login-tabs {
       display: flex;
-      margin-bottom: 30px;
+      margin-bottom: 26px;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-      border: 1px solid #e9ecef;
+      border: 1px solid #e0e0e0;
     }
     .login-tab {
       flex: 1;
       text-align: center;
-      padding: 14px 0;
+      padding: 12px 0;
       cursor: pointer;
-      background-color: #f8f9fa;
-      transition: all 0.3s ease;
-      font-size: 15px;
-      font-weight: 500;
-    }
-    .login-tab.active {
-      background-color: #4c6ef5;
-      color: white;
+      background-color: #f5f7fa;
+      transition: all .2s;
+      font-size: 14px;
       font-weight: 600;
     }
-    .form-group {
-      margin-bottom: 22px;
+    .login-tab.active {
+      background-color: #1565c0;
+      color: #fff;
     }
+    .form-group { margin-bottom: 18px; }
     .form-group label {
       display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-      color: #495057;
-      font-size: 14px;
+      margin-bottom: 7px;
+      font-weight: 600;
+      color: #616161;
+      font-size: 13px;
     }
     .form-group input {
       width: 100%;
-      padding: 14px 16px;
-      border: 1px solid #dee2e6;
+      padding: 12px 14px;
+      border: 1.5px solid #e0e0e0;
       border-radius: 8px;
-      font-size: 15px;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color .2s;
       box-sizing: border-box;
+      background: #fafbfc;
     }
     .form-group input:focus {
-      border-color: #4c6ef5;
-      box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.15);
+      border-color: #1565c0;
+      background: #fff;
       outline: none;
+      box-shadow: 0 0 0 3px rgba(21,101,192,.12);
     }
     .login-btn {
       width: 100%;
-      padding: 14px;
-      background-color: #4c6ef5;
-      color: white;
+      padding: 13px;
+      background-color: #1565c0;
+      color: #fff;
       border: none;
       border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
       cursor: pointer;
-      transition: background-color 0.3s, transform 0.1s;
-      margin-top: 5px;
+      font-family: inherit;
+      transition: background .15s;
+      margin-top: 4px;
     }
-    .login-btn:hover {
-      background-color: #3b5bdb;
-    }
-    .login-btn:active {
-      transform: scale(0.98);
-    }
+    .login-btn:hover { background-color: #0d47a1; }
+    .login-btn:active { transform: scale(.98); }
     .login-links {
-      margin-top: 25px;
+      margin-top: 22px;
       text-align: center;
     }
     .login-links a {
-      color: #4c6ef5;
+      color: #1565c0;
       text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      padding: 5px 10px;
-      border-radius: 4px;
-      transition: background-color 0.2s;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 5px;
+      transition: background .2s;
     }
-    .login-links a:hover {
-      background-color: rgba(76, 110, 245, 0.1);
-    }
+    .login-links a:hover { background-color: rgba(21,101,192,.08); }
     .error-message {
-      color: #e53e3e;
-      margin-top: 16px;
+      color: #e53935;
+      margin-top: 14px;
       padding: 10px;
       text-align: center;
       display: none;
-      background-color: #fff5f5;
-      border-radius: 6px;
-      font-size: 14px;
+      background-color: #ffebee;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
     }
-    #adminLoginForm, #userLoginForm {
-      display: none;
-    }
-    #adminLoginForm.active, #userLoginForm.active {
-      display: block;
-    }
+    #adminLoginForm, #userLoginForm { display: none; }
+    #adminLoginForm.active, #userLoginForm.active { display: block; }
   </style>
 </head>
 <body>
