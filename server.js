@@ -375,7 +375,15 @@ app.get('/api/admin/auth', (req, res) => {
 
 app.get('/api/admin/users', (req, res) => {
   if (!ensureAdmin(req, res)) return;
-  res.json({ success: true, users: loadUsers().users });
+  const users = (loadUsers().users || []).map(u => ({
+    id: u.id,
+    username: u.username,
+    passwordPlain: u.passwordPlain || null,
+    email: u.email || null,
+    isAdmin: !!u.isAdmin,
+    createdAt: u.createdAt
+  }));
+  res.json({ success: true, users });
 });
 
 /** 사용자 생성 (관리자) */
@@ -394,6 +402,7 @@ app.post('/api/admin/users', async (req, res) => {
     id: genId(),
     username,
     passwordHash,
+    passwordPlain: password,
     email: email || undefined,
     isAdmin: false,
     createdAt: new Date().toISOString()
@@ -404,6 +413,34 @@ app.post('/api/admin/users', async (req, res) => {
   const userResponse = { ...newUser };
   delete userResponse.passwordHash;
   res.json({ success: true, user: userResponse });
+});
+
+/** 사용자 수정 (관리자) — username, password 변경 */
+app.put('/api/admin/users/:userId', async (req, res) => {
+  if (!ensureAdmin(req, res)) return;
+  const { userId } = req.params;
+  const { username, password } = req.body || {};
+
+  const data = loadUsers();
+  const idx = (data.users || []).findIndex(u => u.id === userId);
+  if (idx === -1) return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+
+  const target = data.users[idx];
+
+  if (username && username !== target.username) {
+    if (data.users.some(u => u.username === username && u.id !== userId)) {
+      return res.status(400).json({ success: false, message: '이미 사용 중인 아이디입니다.' });
+    }
+    target.username = username;
+  }
+
+  if (password) {
+    target.passwordHash = await bcrypt.hash(password, 10);
+    target.passwordPlain = password;
+  }
+
+  saveUsers(data);
+  res.json({ success: true });
 });
 
 /** 공통 삭제 로직 */

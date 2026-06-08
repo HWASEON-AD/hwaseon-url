@@ -6,10 +6,11 @@
   <title>계정관리 | Hwaseon URL</title>
   <link rel="stylesheet" href="dashboard.css" />
   <style>
-    .admin-main { max-width: 700px; margin: 0 auto; padding: 24px 20px; }
+    .admin-main { max-width: 760px; margin: 0 auto; padding: 24px 20px; }
 
     .admin-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
-    .admin-card-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .admin-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .admin-card-title { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; }
 
     /* 사용자 등록 폼 */
     .user-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
@@ -21,10 +22,16 @@
     .form-msg--success { background: #d1fae5; color: #065f46; display: block; }
     .form-msg--error   { background: #fee2e2; color: #991b1b; display: block; }
 
+    /* 검색창 */
+    .search-wrap { position: relative; }
+    .search-wrap input { padding: 7px 12px 7px 32px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 13px; font-family: inherit; outline: none; width: 200px; transition: border-color .2s; }
+    .search-wrap input:focus { border-color: var(--brand); }
+    .search-wrap::before { content: '🔍'; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 12px; pointer-events: none; }
+
     /* 사용자 테이블 */
     .user-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .user-table th { text-align: left; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 10px 12px; border-bottom: 1.5px solid var(--border); }
-    .user-table td { padding: 12px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    .user-table th { text-align: left; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 10px 12px; border-bottom: 1.5px solid var(--border); white-space: nowrap; }
+    .user-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
     .user-table tbody tr:last-child td { border-bottom: none; }
     .user-table tbody tr:hover td { background: var(--bg); }
 
@@ -32,7 +39,28 @@
     .badge--admin { background: #eff6ff; color: var(--brand); }
     .badge--user  { background: var(--bg); color: var(--muted); }
 
-    /* 토스트는 dashboard.css 공용 */
+    /* 비밀번호 셀 */
+    .pw-cell { display: flex; align-items: center; gap: 6px; }
+    .pw-text { font-family: monospace; font-size: 13px; color: var(--text); }
+    .pw-hidden { letter-spacing: 2px; color: var(--muted); }
+    .pw-toggle { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--muted); padding: 2px 4px; line-height: 1; }
+    .pw-toggle:hover { color: var(--text); }
+
+    /* 수정 모달 */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 12px; padding: 28px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+    .modal-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .modal-field input { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s; box-sizing: border-box; }
+    .modal-field input:focus { border-color: var(--brand); }
+    .modal-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .modal-msg { font-size: 13px; padding: 8px 12px; border-radius: 6px; margin-top: 10px; display: none; }
+    .modal-msg--error { background: #fee2e2; color: #991b1b; display: block; }
+
+    .count-badge { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--bg); border-radius: 999px; padding: 2px 10px; }
   </style>
 </head>
 <body>
@@ -56,7 +84,9 @@
 
   <!-- 카드 1: 새 사용자 등록 -->
   <section class="admin-card">
-    <div class="admin-card-title">새 사용자 등록</div>
+    <div class="admin-card-header">
+      <span class="admin-card-title">새 사용자 등록</span>
+    </div>
     <form class="user-form" id="createUserForm" autocomplete="off">
       <div class="user-form-field">
         <label for="newUsername">아이디</label>
@@ -73,28 +103,58 @@
 
   <!-- 카드 2: 사용자 목록 -->
   <section class="admin-card">
-    <div class="admin-card-title">사용자 목록</div>
+    <div class="admin-card-header">
+      <span class="admin-card-title">사용자 목록 <span class="count-badge" id="userCount">0명</span></span>
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="아이디 검색…" />
+      </div>
+    </div>
     <table class="user-table">
       <thead>
         <tr>
           <th>아이디</th>
+          <th>비밀번호</th>
           <th>가입일</th>
           <th>권한</th>
           <th></th>
         </tr>
       </thead>
       <tbody id="usersTableBody">
-        <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px;">불러오는 중…</td></tr>
+        <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">불러오는 중…</td></tr>
       </tbody>
     </table>
   </section>
 
 </main>
 
+<!-- ── 수정 모달 ── -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal-box">
+    <div class="modal-title">사용자 수정</div>
+    <input type="hidden" id="editUserId" />
+    <div class="modal-field">
+      <label for="editUsername">아이디</label>
+      <input type="text" id="editUsername" placeholder="새 아이디 (변경 없으면 비워두기)" autocomplete="off" />
+    </div>
+    <div class="modal-field">
+      <label for="editPassword">비밀번호</label>
+      <input type="text" id="editPassword" placeholder="새 비밀번호 (변경 없으면 비워두기)" autocomplete="off" />
+      <div class="modal-hint">비워두면 기존 비밀번호 유지</div>
+    </div>
+    <div class="modal-msg" id="editMsg"></div>
+    <div class="modal-actions">
+      <button class="btn btn--outline btn--sm" onclick="closeEditModal()">취소</button>
+      <button class="btn btn--primary btn--sm" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- 토스트 -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
+let allUsers = [];
+
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
   loadUsers();
@@ -128,6 +188,16 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     location.href = '/login';
   });
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    const filtered = q ? allUsers.filter(u => u.username.toLowerCase().includes(q)) : allUsers;
+    renderUsers(filtered);
+  });
+
+  document.getElementById('editModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('editModal')) closeEditModal();
+  });
 });
 
 async function checkAuth() {
@@ -136,7 +206,6 @@ async function checkAuth() {
     const d = await r.json();
     if (!d.success || !d.isAdmin) { location.href = '/login'; return; }
   } catch { location.href = '/login'; return; }
-
   try {
     const r = await fetch('/api/me', { credentials: 'include' });
     const d = await r.json();
@@ -148,30 +217,109 @@ async function loadUsers() {
   try {
     const r = await fetch('/api/admin/users', { credentials: 'include' });
     const d = await r.json();
-    if (d.success && d.users) renderUsers(d.users);
+    if (d.success && d.users) {
+      allUsers = d.users;
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      const filtered = q ? allUsers.filter(u => u.username.toLowerCase().includes(q)) : allUsers;
+      renderUsers(filtered);
+      document.getElementById('userCount').textContent = `${allUsers.length}명`;
+    }
   } catch {}
 }
 
 function renderUsers(users) {
   const tbody = document.getElementById('usersTableBody');
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px;">사용자 없음</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px;">검색 결과 없음</td></tr>';
     return;
   }
-  tbody.innerHTML = users.map(u => `
+  tbody.innerHTML = users.map(u => {
+    const hasPw = !!u.passwordPlain;
+    const pwId = `pw_${u.id}`;
+    return `
     <tr>
       <td style="font-weight:600;">${escHtml(u.username)}</td>
-      <td style="color:var(--muted);">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('ko-KR') : '—'}</td>
+      <td>
+        ${u.isAdmin ? '<span style="color:var(--muted);font-size:13px;">—</span>' : `
+        <div class="pw-cell">
+          <span class="pw-text pw-hidden" id="${pwId}">${hasPw ? '••••••••' : '—'}</span>
+          ${hasPw ? `<button class="pw-toggle" onclick="togglePw('${pwId}','${escHtml(u.passwordPlain)}')" title="보기/숨기기">👁</button>` : ''}
+        </div>`}
+      </td>
+      <td style="color:var(--muted);font-size:13px;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('ko-KR') : '—'}</td>
       <td>
         <span class="badge ${u.isAdmin ? 'badge--admin' : 'badge--user'}">
           ${u.isAdmin ? '관리자' : '일반'}
         </span>
       </td>
-      <td>
-        ${u.isAdmin ? '' : `<button class="btn btn--danger btn--sm" onclick="deleteUser('${u.id}','${escHtml(u.username)}')">삭제</button>`}
+      <td style="white-space:nowrap;">
+        ${u.isAdmin ? '' : `
+          <button class="btn btn--outline btn--sm" style="margin-right:4px;" onclick="openEditModal('${u.id}','${escHtml(u.username)}')">수정</button>
+          <button class="btn btn--danger btn--sm" onclick="deleteUser('${u.id}','${escHtml(u.username)}')">삭제</button>
+        `}
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
+}
+
+function togglePw(id, plain) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.classList.contains('pw-hidden')) {
+    el.textContent = plain;
+    el.classList.remove('pw-hidden');
+  } else {
+    el.textContent = '••••••••';
+    el.classList.add('pw-hidden');
+  }
+}
+
+function openEditModal(id, username) {
+  document.getElementById('editUserId').value = id;
+  document.getElementById('editUsername').value = username;
+  document.getElementById('editPassword').value = '';
+  document.getElementById('editMsg').className = 'modal-msg';
+  document.getElementById('editMsg').textContent = '';
+  document.getElementById('editModal').classList.add('open');
+  document.getElementById('editUsername').focus();
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+async function saveEdit() {
+  const id = document.getElementById('editUserId').value;
+  const username = document.getElementById('editUsername').value.trim();
+  const password = document.getElementById('editPassword').value;
+  const msg = document.getElementById('editMsg');
+
+  if (!username && !password) {
+    msg.textContent = '변경할 내용을 입력해주세요.';
+    msg.className = 'modal-msg modal-msg--error';
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username: username || undefined, password: password || undefined })
+    });
+    const d = await r.json();
+    if (d.success) {
+      closeEditModal();
+      showToast('수정됐습니다.');
+      loadUsers();
+    } else {
+      msg.textContent = d.message || '수정 실패';
+      msg.className = 'modal-msg modal-msg--error';
+    }
+  } catch {
+    msg.textContent = '서버 오류가 발생했습니다.';
+    msg.className = 'modal-msg modal-msg--error';
+  }
 }
 
 async function deleteUser(id, name) {
