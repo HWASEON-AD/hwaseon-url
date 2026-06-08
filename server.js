@@ -6,9 +6,10 @@ const cors = require('cors');
 const path = require('path');
 const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
-const { rateLimit } = require('express-rate-limit'); // 이슈 5: 로그인 Rate Limiting (v7+ named export)
+const { rateLimit } = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
@@ -68,6 +69,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'hwaseon-secret-key',
   resave: false,
+  saveUninitialized: false,
   store: new FileStore({
     path: SESSIONS_DIR,
     ttl: 24 * 60 * 60,
@@ -151,7 +153,8 @@ const loadDB = () => readJSONSafe(DB_FILE, {});
 const genId = () => Date.now().toString();
 const generateShortCode = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  return Array.from({ length: 6 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+  const bytes = crypto.randomBytes(6);
+  return Array.from(bytes, b => chars[b % chars.length]).join('');
 };
 
 function getClientIp(req) {
@@ -166,7 +169,7 @@ function hasAdminSession(req) {
   return !!(req.session?.user?.isAdmin);
 }
 function hasValidAdminKey(req) {
-  const key = req.body?.adminKey || req.query?.adminKey || req.headers['x-admin-key'];
+  const key = req.body?.adminKey || req.headers['x-admin-key'];
   return key === ADMIN_KEY;
 }
 function ensureAdmin(req, res) {
@@ -509,6 +512,7 @@ app.get('/api/domains', (_req, res) => {
 });
 
 app.get('/urls', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   const db = loadDB();
   const isAdmin = !!req.session.user?.isAdmin;
   const userId = req.session.user?.id || null;
@@ -683,7 +687,14 @@ app.delete('/delete-all', (req, res) => {
  *  ========================= */
 app.get('/api/backup', (req, res) => {
   if (!ensureAdmin(req, res)) return;
-  const backup = { timestamp: new Date().toISOString(), urls: loadDB(), users: loadUsers() };
+  const usersData = loadUsers();
+  const safeUsers = {
+    users: (usersData.users || []).map(u => {
+      const { passwordPlain, ...rest } = u;
+      return rest;
+    })
+  };
+  const backup = { timestamp: new Date().toISOString(), urls: loadDB(), users: safeUsers };
   res.setHeader('Content-Disposition', `attachment; filename=backup-${new Date().toISOString().slice(0,10)}.json`);
   res.json(backup);
 });
