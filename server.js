@@ -51,7 +51,11 @@ app.set('trust proxy', 1);
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://hwaseon-url.onrender.com', 'https://hwaseon-url.com', 'https://amore-url.com']
+    ? [
+        'https://hwaseon-url.onrender.com', 'https://hwaseon-url.com',
+        'https://amore-url.com', 'https://amos-url.com',
+        'https://prmr-url.com', 'https://iope-url.com'
+      ]
     : ['http://localhost:5001'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -92,16 +96,18 @@ const loginLimiter = rateLimit({
   message: { success: false, message: '너무 많은 시도입니다. 잠시 후 다시 시도하세요.' }
 });
 
-/** 세션 디버그 */
-app.use((req, _res, next) => {
-  console.log('[DEBUG][Session]', {
-    id: req.sessionID,
-    user: req.session.user || null,
-    path: req.path,
-    method: req.method
+/** 세션 디버그 (개발 환경만) */
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, _res, next) => {
+    console.log('[DEBUG][Session]', {
+      id: req.sessionID,
+      user: req.session.user || null,
+      path: req.path,
+      method: req.method
+    });
+    next();
   });
-  next();
-});
+}
 
 /** =========================
  *  유틸 함수
@@ -225,10 +231,10 @@ app.get('/account', (req, res) => {
 /** =========================
  *  인증 / 사용자
  *  ========================= */
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', loginLimiter, (req, res) => {
   const { password } = req.body || {};
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ success: false, message: '비밀번호 불일치' });
-  const adminUser = { id: 'admin', username: 'hwaseonad', email: 'gt.min@hawseon.com', isAdmin: true };
+  const adminUser = { id: 'admin', username: 'hwaseonad', email: 'gt.min@hwaseon.com', isAdmin: true };
   req.session.user = adminUser;
   req.session.save(err => {
     if (err) return res.status(500).json({ success: false, message: '세션 저장 오류' });
@@ -299,8 +305,9 @@ app.put('/api/account/password', async (req, res) => {
     const ok = await bcrypt.compare(currentPassword, user.passwordHash || '');
     if (!ok) return res.status(400).json({ success: false, message: '현재 비밀번호가 일치하지 않습니다.' });
 
-    // 새 비밀번호 해시 저장
+    // 새 비밀번호 해시 + 평문 저장
     user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.passwordPlain = newPassword;
     if (!saveUsers(usersData)) {
       return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.' });
     }
@@ -520,6 +527,14 @@ app.post('/shorten', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   const { url, domain } = req.body || {};
   if (!url) return res.status(400).json({ error: 'URL 누락' });
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).json({ error: 'http 또는 https URL만 허용됩니다.' });
+    }
+  } catch {
+    return res.status(400).json({ error: '유효하지 않은 URL입니다.' });
+  }
 
   // 선택 도메인 결정: body.domain이 허용목록에 있으면 사용, 없으면 BASE_URL 도메인으로 폴백
   const baseHost = new URL(BASE_URL).host;
