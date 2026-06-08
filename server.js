@@ -8,6 +8,7 @@ const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
+const rateLimit = require('express-rate-limit'); // 이슈 5: 로그인 Rate Limiting
 require('dotenv').config();
 
 const app = express();
@@ -29,6 +30,13 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'hwaseon@00';
 const ADMIN_KEY = process.env.ADMIN_KEY || 'hwaseon-admin-key';
 
 /** =========================
+ *  이슈 4: 환경변수 미설정 경고 (서버 시작 시점, 서비스는 계속 실행)
+ *  ========================= */
+if (!process.env.ADMIN_PASSWORD) console.warn('[WARN] ADMIN_PASSWORD 미설정 — 기본값 사용 중');
+if (!process.env.ADMIN_KEY) console.warn('[WARN] ADMIN_KEY 미설정 — 기본값 사용 중');
+if (!process.env.SESSION_SECRET) console.warn('[WARN] SESSION_SECRET 미설정 — 기본값 사용 중');
+
+/** =========================
  *  디렉토리 준비
  *  ========================= */
 for (const dir of [DATA_DIR, SESSIONS_DIR, BACKUPS_DIR]) {
@@ -38,6 +46,9 @@ for (const dir of [DATA_DIR, SESSIONS_DIR, BACKUPS_DIR]) {
 /** =========================
  *  CORS/파서/세션
  *  ========================= */
+// 이슈 3: 프록시(Render) 뒤에서 secure 쿠키가 정상 동작하도록 신뢰 프록시 설정
+app.set('trust proxy', 1);
+
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? ['https://hwaseon-url.onrender.com', 'https://hwaseon-url.com', 'https://amore-url.com']
@@ -61,7 +72,7 @@ app.use(session({
   }),
   cookie: {
     httpOnly: true,
-    secure: false, // Render가 HTTPS면 true 고려
+    secure: process.env.NODE_ENV === 'production', // 이슈 3: 운영 환경에서만 secure 쿠키
     maxAge: 24 * 60 * 60 * 1000,
     sameSite: 'lax'
   }
@@ -69,6 +80,17 @@ app.use(session({
 
 /** 정적 파일 */
 app.use(express.static(path.join(__dirname, 'public')));
+
+/** =========================
+ *  이슈 5: 로그인 Rate Limiting (1분 10회 제한)
+ *  ========================= */
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1분
+  max: 10,             // 1분당 최대 10회
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '너무 많은 시도입니다. 잠시 후 다시 시도하세요.' }
+});
 
 /** 세션 디버그 */
 app.use((req, _res, next) => {
@@ -194,6 +216,11 @@ app.get('/admin', (req, res) => {
   if (hasAdminSession(req)) res.sendFile(path.join(__dirname, 'public', 'admin.html'));
   else res.redirect('/login');
 });
+// 계정관리 페이지 (일반 사용자)
+app.get('/account', (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  res.sendFile(path.join(__dirname, 'public', 'account.html'));
+});
 
 /** =========================
  *  인증 / 사용자
@@ -209,7 +236,7 @@ app.post('/api/admin/login', (req, res) => {
   });
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ success: false, message: '입력 필요' });
 
@@ -237,6 +264,108 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', (req, res) => {
   if (req.session.user) res.json({ success: true, user: req.session.user, isAuthenticated: true });
   else res.status(401).json({ success: false, message: '로그인 필요', isAuthenticated: false });
+});
+
+/** =========================
+ *  계정관리 API (일반 사용자)
+ *  ========================= */
+
+/** 비밀번호 변경 — 현재 비밀번호 검증 후 새 비밀번호 해시 저장 */
+app.put('/api/account/password', async (req, res) => {
+  // 인증 확인
+  if (!req.session.user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+
+  const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+  // 필수값 검증
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return res.status(400).json({ success: false, message: '모든 항목을 입력해주세요.' });
+  }
+  // 새 비밀번호와 확인 비밀번호 일치 검증
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ success: false, message: '새 비밀번호와 확인 비밀번호가 일치하지 않습니다.' });
+  }
+  // 비밀번호 길이 검증
+  if (newPassword.length < 8) {
+    return res.status(400).json({ success: false, message: '비밀번호는 8자 이상이어야 합니다.' });
+  }
+
+  try {
+    const usersData = loadUsers();
+    const user = (usersData.users || []).find(u => u.id === req.session.user.id);
+    if (!user) return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+
+    // 현재 비밀번호 검증
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash || '');
+    if (!ok) return res.status(400).json({ success: false, message: '현재 비밀번호가 일치하지 않습니다.' });
+
+    // 새 비밀번호 해시 저장
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    if (!saveUsers(usersData)) {
+      return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.' });
+    }
+    res.json({ success: true, message: '비밀번호가 변경되었습니다.' });
+  } catch (e) {
+    console.error('[ACCOUNT PASSWORD FAIL]', e);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.' });
+  }
+});
+
+/** 이메일 변경 — 형식 검증 후 즉시 업데이트 */
+app.put('/api/account/email', (req, res) => {
+  // 인증 확인
+  if (!req.session.user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+
+  const { email } = req.body || {};
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // 이메일 형식 검증
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ success: false, message: '올바른 이메일 형식이 아닙니다.' });
+  }
+
+  try {
+    const usersData = loadUsers();
+    const user = (usersData.users || []).find(u => u.id === req.session.user.id);
+    if (!user) return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+
+    user.email = email;
+    if (!saveUsers(usersData)) {
+      return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.' });
+    }
+
+    // 세션 정보도 갱신
+    req.session.user.email = email;
+    req.session.save(err => {
+      if (err) return res.status(500).json({ success: false, message: '세션 저장 오류' });
+      res.json({ success: true, message: '이메일이 변경되었습니다.' });
+    });
+  } catch (e) {
+    console.error('[ACCOUNT EMAIL FAIL]', e);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.' });
+  }
+});
+
+/** 내 통계 — 생성한 URL 수, 누적 조회수 합계 */
+app.get('/api/account/stats', (req, res) => {
+  // 인증 확인
+  if (!req.session.user) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+
+  try {
+    const db = loadDB();
+    const userId = req.session.user.id;
+    let urlCount = 0;
+    let totalVisits = 0;
+    for (const code of Object.keys(db)) {
+      if (db[code].userId === userId) {
+        urlCount++;
+        totalVisits += (db[code].totalVisits || 0);
+      }
+    }
+    res.json({ success: true, stats: { urlCount, totalVisits } });
+  } catch (e) {
+    console.error('[ACCOUNT STATS FAIL]', e);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.' });
+  }
 });
 
 /** 관리자 사용자 목록 */
@@ -396,20 +525,29 @@ app.delete('/urls/:shortCode', (req, res) => {
   res.json({ message: '삭제 완료' });
 });
 
+// 이슈 1: 메모 수정 — 로그인 + 소유권(또는 관리자) 검증
 app.put('/urls/:shortCode', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   const db = loadDB();
   const code = req.params.shortCode;
   if (!db[code]) return res.status(404).json({ error: '없음' });
-  db[code].memo = req.body?.memo || '';
+  if (db[code].userId !== req.session.user.id && !req.session.user.isAdmin) {
+    return res.status(403).json({ error: '권한이 없습니다.' });
+  }
+  db[code].memo = req.body?.memo ?? '';
   saveDB(db);
   res.json({ message: '수정 완료' });
 });
 
-/** 상세 */
+/** 상세 — 이슈 2: 로그인 + 소유권(또는 관리자) 검증 */
 app.get('/urls/:shortCode/details', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   const db = loadDB();
   const code = req.params.shortCode;
   if (!db[code]) return res.status(404).json({ error: '없음' });
+  if (db[code].userId !== req.session.user.id && !req.session.user.isAdmin) {
+    return res.status(403).json({ error: '권한이 없습니다.' });
+  }
   const d = db[code];
   res.json({
     shortCode: code,
@@ -436,7 +574,7 @@ app.post('/track/:shortCode', (req, res) => {
 /** 리다이렉트 */
 app.get('/:shortCode', (req, res, next) => {
   const code = req.params.shortCode;
-  if (['dashboard', 'multiple', 'login', 'signup', 'admin'].includes(code) || code.includes('.')) return next();
+  if (['dashboard', 'multiple', 'login', 'signup', 'admin', 'account'].includes(code) || code.includes('.')) return next();
 
   const db = loadDB();
   const row = db[code];

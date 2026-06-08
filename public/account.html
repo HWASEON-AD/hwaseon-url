@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>내 계정 | Hwaseon URL</title>
+  <!-- dashboard.css 재사용 (CSS 변수/버튼/토스트 시스템 공용) -->
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    /* ── account 페이지 전용 스타일 ── */
+    .account-main { max-width: 600px; margin: 0 auto; padding: 24px 20px; }
+    .account-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .account-card-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .account-field { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .account-label { width: 80px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .account-value { flex: 1; font-size: 14px; color: var(--text); }
+    .account-input { flex: 1; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 13px; font-family: inherit; outline: none; transition: border-color .2s; }
+    .account-input:focus { border-color: var(--brand); }
+    .pw-form { display: flex; flex-direction: column; gap: 12px; }
+    .pw-form label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; display: block; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-box { background: var(--bg); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-box-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .stat-box-value { font-size: 28px; font-weight: 800; color: var(--brand); }
+    .field-error { font-size: 12px; color: var(--danger); margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ── 사이트 헤더 ── -->
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand-logo" href="/">Hwaseon URL</a>
+    <nav class="site-nav">
+      <a href="/" title="단축키: N">URL 줄이기</a>
+      <span style="color:var(--text);font-size:14px;font-weight:700;">내 계정</span>
+      <span class="nav-id" id="userName">로딩 중…</span>
+      <button id="logoutBtn" class="btn btn--danger btn--sm">로그아웃</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ── 메인 ── -->
+<main class="account-main">
+
+  <!-- 뒤로가기 -->
+  <div style="margin-bottom:16px;">
+    <a href="/dashboard" class="btn btn--outline btn--sm">← 대시보드로 돌아가기</a>
+  </div>
+
+  <!-- 카드 1: 계정 정보 -->
+  <section class="account-card">
+    <div class="account-card-title">계정 정보</div>
+
+    <div class="account-field">
+      <span class="account-label">아이디</span>
+      <span class="account-value" id="accountUsername">—</span>
+    </div>
+
+    <div class="account-field">
+      <span class="account-label">이메일</span>
+      <!-- 표시 모드 -->
+      <span class="account-value" id="emailDisplay">—</span>
+      <button class="btn btn--outline btn--sm" id="emailEditBtn">변경</button>
+      <!-- 편집 모드 (기본 숨김) -->
+      <input type="email" class="account-input" id="emailInput" style="display:none;" placeholder="new@example.com" />
+      <button class="btn btn--primary btn--sm" id="emailSaveBtn" style="display:none;">저장</button>
+      <button class="btn btn--ghost btn--sm" id="emailCancelBtn" style="display:none;">취소</button>
+    </div>
+    <div class="field-error" id="emailError" style="display:none;"></div>
+
+    <div class="account-field">
+      <span class="account-label">가입일</span>
+      <span class="account-value" id="accountCreatedAt">—</span>
+    </div>
+  </section>
+
+  <!-- 카드 2: 비밀번호 변경 -->
+  <section class="account-card">
+    <div class="account-card-title">비밀번호 변경</div>
+
+    <form class="pw-form" id="pwForm" autocomplete="off">
+      <div>
+        <label for="currentPassword">현재 비밀번호</label>
+        <input type="password" class="account-input" id="currentPassword" autocomplete="current-password" />
+      </div>
+      <div>
+        <label for="newPassword">새 비밀번호</label>
+        <input type="password" class="account-input" id="newPassword" autocomplete="new-password" />
+      </div>
+      <div>
+        <label for="confirmPassword">비밀번호 확인</label>
+        <input type="password" class="account-input" id="confirmPassword" autocomplete="new-password" />
+      </div>
+      <div class="field-error" id="pwError" style="display:none;"></div>
+      <div style="display:flex;justify-content:flex-end;">
+        <button type="submit" class="btn btn--primary btn--sm" id="pwSubmitBtn">변경하기</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 카드 3: 내 통계 -->
+  <section class="account-card">
+    <div class="account-card-title">내 통계</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-box-label">생성한 URL 수</div>
+        <div class="stat-box-value" id="statUrlCount">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-label">누적 조회수</div>
+        <div class="stat-box-value" id="statTotalVisits">—</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 토스트 컨테이너 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="account.js"></script>
+</body>
+</html>

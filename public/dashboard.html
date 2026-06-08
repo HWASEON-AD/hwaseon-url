@@ -14,6 +14,7 @@
     <a class="brand-logo" href="/">Hwaseon URL</a>
     <nav class="site-nav">
       <a href="/" title="단축키: N">URL 줄이기</a>
+      <span id="nav-account-link" style="display:none;"><a href="/account">내 계정</a></span>
       <span id="nav-admin-link" style="display:none;"><a href="/admin">계정관리</a></span>
       <span class="nav-id" id="userName">로딩 중…</span>
       <button id="logoutBtn" class="btn btn--danger btn--sm">로그아웃</button>
@@ -100,7 +101,11 @@
       .then(data => {
         if (!data.success || !data.isAuthenticated) { window.location.replace('/login'); return; }
         document.getElementById('userName').textContent = data.user.username;
-        if (data.user.isAdmin) document.getElementById('nav-admin-link').style.display = 'inline';
+        if (data.user.isAdmin) {
+          document.getElementById('nav-admin-link').style.display = 'inline';
+        } else {
+          document.getElementById('nav-account-link').style.display = 'inline';
+        }
       })
       .catch(() => window.location.replace('/login'));
 
