@@ -480,6 +480,104 @@ body {
   .dashboard-table { min-width: 700px; }
 }
 
+/* ── 페이지네이션 ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.page-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.page-btn:disabled { opacity: .4; cursor: default; }
+.page-btn--active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.page-info { font-size: 12px; color: var(--muted); margin-left: 8px; }
+.page-ellipsis { padding: 0 4px; color: var(--muted); font-size: 13px; }
+
+/* ── 메모 셀 ── */
+.memo-cell {
+  text-align: left;
+  cursor: pointer;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: background .15s;
+}
+.memo-cell:hover { background: #f5f7fa; }
+.memo-text {
+  font-size: 12px;
+  color: #555;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.memo-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1.5px solid var(--brand);
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  background: #fff;
+}
+
+/* ── 복사 버튼 (소형) ── */
+.btn-copy-small {
+  background: #e3f0ff;
+  color: var(--brand);
+  border: none;
+  border-radius: 5px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-copy-small:hover { background: var(--brand); color: #fff; }
+
+/* ── 토스트 아이템 (신형) ── */
+.toast-item {
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: #323232;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  animation: toastIn .2s ease;
+  pointer-events: none;
+}
+.toast-item--error { background: var(--danger); }
+
+/* ── 도메인 탭 (--tab-color 변수 지원) ── */
+.domain-tab--active {
+  background: var(--tab-color, var(--brand));
+  color: #fff;
+  border-color: var(--tab-color, var(--brand));
+}
+.domain-tab:hover { border-color: var(--tab-color, var(--brand)); color: var(--tab-color, var(--brand)); }
+
+/* ── 모달 flex 오버레이 (초기값 display:none → flex로 변경) ── */
+#bulkModal { align-items: center; justify-content: center; }
+
 /* ── 구형 클래스 호환 (JS에서 참조) ── */
 .dashboard-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
 .dashboard-actions { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }

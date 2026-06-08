@@ -13,6 +13,7 @@
   <div class="header-inner">
     <a class="brand-logo" href="/">Hwaseon URL</a>
     <nav class="site-nav">
+      <a href="/" title="단축키: N">URL 줄이기</a>
       <span id="nav-admin-link" style="display:none;"><a href="/admin">계정관리</a></span>
       <span class="nav-id" id="userName">로딩 중…</span>
       <button id="logoutBtn" class="btn btn--danger btn--sm">로그아웃</button>
@@ -27,11 +28,12 @@
   <div class="dashboard-actions topbar">
     <button id="deleteAllBtn" class="btn btn--danger btn--sm">전체 삭제</button>
     <button id="downloadExcelBtn" class="btn btn--outline btn--sm">엑셀 다운로드</button>
+    <button id="bulkCreateBtn" class="btn btn--primary btn--sm">다중 URL 등록</button>
   </div>
 
   <!-- 검색 -->
   <div class="filter-bar">
-    <input type="text" id="searchInput" class="filter-input" placeholder="URL, 메모, 도메인 검색…" oninput="filterAndRender()" />
+    <input type="text" id="searchInput" class="filter-input" placeholder="URL, 메모, 도메인 검색… (단축키 /)" oninput="filterAndRender()" />
     <button class="btn btn--ghost btn--sm" onclick="clearSearch()">✕</button>
   </div>
 
@@ -44,12 +46,13 @@
       <thead>
         <tr>
           <th style="width:4%"></th>
-          <th style="width:14%">Short URL</th>
-          <th style="width:26%">Long URL</th>
-          <th style="width:12%">도메인</th>
-          <th style="width:8%">오늘</th>
-          <th style="width:8%">누적</th>
-          <th style="width:10%">사용자</th>
+          <th style="width:13%">Short URL</th>
+          <th style="width:20%">Long URL</th>
+          <th style="width:10%">도메인</th>
+          <th style="width:5%">오늘</th>
+          <th style="width:5%">누적</th>
+          <th style="width:8%">사용자</th>
+          <th style="width:17%">메모</th>
           <th style="width:10%">관리</th>
           <th style="width:8%">상세</th>
         </tr>
@@ -58,10 +61,35 @@
     </table>
   </div>
 
+  <!-- 페이지네이션 -->
+  <div id="pagination" class="pagination"></div>
+
 </main>
 
 <!-- 토스트 컨테이너 -->
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- 다중 URL 등록 모달 -->
+<div id="bulkModal" class="modal-overlay" style="display:none">
+  <div class="modal-content" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">다중 URL 등록</div>
+      <button class="modal-close" onclick="document.getElementById('bulkModal').style.display='none'">&times;</button>
+    </div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px;">한 줄에 URL 하나씩 입력하세요. 도메인은 아래에서 선택합니다.</p>
+    <textarea id="bulkUrlInput" placeholder="https://example.com/page1&#10;https://example.com/page2&#10;https://example.com/page3"
+      style="width:100%;height:160px;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+    <div style="margin:12px 0 16px;">
+      <label style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;">도메인 선택</label>
+      <select id="bulkDomainSelect" style="width:100%;margin-top:6px;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;background:#fafafa;"></select>
+    </div>
+    <div id="bulkResult" style="display:none;max-height:160px;overflow-y:auto;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn--outline btn--sm" onclick="document.getElementById('bulkModal').style.display='none'">닫기</button>
+      <button class="btn btn--primary btn--sm" id="bulkSubmitBtn">등록하기</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="dashboard.js"></script>
@@ -72,9 +100,7 @@
       .then(data => {
         if (!data.success || !data.isAuthenticated) { window.location.replace('/login'); return; }
         document.getElementById('userName').textContent = data.user.username;
-        if (data.user.isAdmin) {
-          document.getElementById('nav-admin-link').style.display = 'inline';
-        }
+        if (data.user.isAdmin) document.getElementById('nav-admin-link').style.display = 'inline';
       })
       .catch(() => window.location.replace('/login'));
 
@@ -82,6 +108,18 @@
       fetch('/api/logout', { method: 'POST', credentials: 'include' })
         .then(r => r.json()).then(() => window.location.replace('/login'))
         .catch(() => window.location.replace('/login'));
+    });
+
+    // 단축키: N → URL 줄이기, / → 검색창 포커스
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        location.href = '/';
+      }
+      if (e.key === '/') {
+        e.preventDefault();
+        document.getElementById('searchInput').focus();
+      }
     });
   });
 </script>
