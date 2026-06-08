@@ -8,7 +8,7 @@ const cron = require('node-cron');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
-const rateLimit = require('express-rate-limit'); // 이슈 5: 로그인 Rate Limiting
+const { rateLimit } = require('express-rate-limit'); // 이슈 5: 로그인 Rate Limiting (v7+ named export)
 require('dotenv').config();
 
 const app = express();
