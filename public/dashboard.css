@@ -42,11 +42,23 @@ body {
   justify-content: space-between;
 }
 .brand-logo {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--brand);
+  height: 28px;
+  display: block;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   text-decoration: none;
-  letter-spacing: -.3px;
+}
+.brand-label {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #111;
+  font-family: 'Courier New', 'Consolas', monospace;
+  line-height: 1;
+  padding-top: 1px;
 }
 .site-nav {
   display: flex;
