@@ -193,7 +193,13 @@ function goPage(n) {
 // ===== 필터 + 렌더 =====
 function filterAndRender() {
     const searchEl = document.getElementById('searchInput');
-    currentSearchQuery = searchEl ? searchEl.value.trim() : '';
+    const newQuery = searchEl ? searchEl.value.trim() : '';
+
+    // 검색어 변경 시 항상 1페이지로 리셋
+    if (newQuery !== currentSearchQuery) {
+        currentPage = 1;
+    }
+    currentSearchQuery = newQuery;
 
     renderDomainTabs();
 
@@ -204,7 +210,7 @@ function filterAndRender() {
     const filtered = allUrls.filter(url => {
         if (currentDomainFilter !== 'all' && (url.domain || '') !== currentDomainFilter) return false;
         if (!q) return true;
-        return [url.longUrl, url.memo, url.shortCode, url.domain]
+        return [url.longUrl, url.shortUrl, url.memo, url.shortCode, url.domain]
             .some(v => (v || '').toString().toLowerCase().includes(q));
     });
 
