@@ -4,6 +4,7 @@ let allUrls = [];
 let currentDomainFilter = 'all';
 let currentSearchQuery = '';
 let currentPage = 1;
+let currentSort = { field: null, dir: 'asc' }; // field: 'domain'|'memo'|'username'
 
 // 도메인별 배지 색상
 const DOMAIN_COLORS = {
@@ -207,12 +208,22 @@ function filterAndRender() {
     if (!tbody) return;
 
     const q = currentSearchQuery.toLowerCase();
-    const filtered = allUrls.filter(url => {
+    let filtered = allUrls.filter(url => {
         if (currentDomainFilter !== 'all' && (url.domain || '') !== currentDomainFilter) return false;
         if (!q) return true;
         return [url.longUrl, url.shortUrl, url.memo, url.shortCode, url.domain]
             .some(v => (v || '').toString().toLowerCase().includes(q));
     });
+
+    // 정렬
+    if (currentSort.field) {
+        const { field, dir } = currentSort;
+        filtered = [...filtered].sort((a, b) => {
+            const av = (a[field] || '').toString().toLowerCase();
+            const bv = (b[field] || '').toString().toLowerCase();
+            return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+        });
+    }
 
     const totalFiltered = filtered.length;
     const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -240,6 +251,29 @@ function clearSearch() {
     currentSearchQuery = '';
     currentPage = 1;
     filterAndRender();
+}
+
+function toggleSort(field) {
+    if (currentSort.field === field) {
+        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = { field, dir: 'asc' };
+    }
+    currentPage = 1;
+    updateSortHeaders();
+    filterAndRender();
+}
+
+function updateSortHeaders() {
+    ['domain', 'memo', 'username'].forEach(f => {
+        const el = document.getElementById(`sort-${f}`);
+        if (!el) return;
+        if (currentSort.field === f) {
+            el.textContent = currentSort.dir === 'asc' ? ' ▲' : ' ▼';
+        } else {
+            el.textContent = ' ⇅';
+        }
+    });
 }
 
 // ===== URL 목록 로드 =====
