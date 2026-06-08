@@ -347,6 +347,7 @@ app.get('/urls', (req, res) => {
 });
 
 app.post('/shorten', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   const { url, domain } = req.body || {};
   if (!url) return res.status(400).json({ error: 'URL 누락' });
 

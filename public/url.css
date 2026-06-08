@@ -1,20 +1,19 @@
-/* Pretendard */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --brand: #1565c0;
-  --brand-hover: #0d47a1;
-  --danger: #e53935;
-  --success: #43a047;
-  --bg: #f5f7fa;
-  --card-bg: #fff;
-  --border: #e0e0e0;
-  --text: #1a1a2e;
-  --muted: #757575;
-  --shadow: 0 1px 4px rgba(0,0,0,.07);
-  --radius: 10px;
+  --brand:       #111111;
+  --brand-hover: #333333;
+  --danger:      #e53935;
+  --success:     #43a047;
+  --bg:          #f0f0f0;
+  --card-bg:     #ffffff;
+  --border:      #e0e0e0;
+  --text:        #111111;
+  --muted:       #888888;
+  --radius:      12px;
+  --shadow:      0 2px 20px rgba(0,0,0,.08);
 }
 
 body {
@@ -23,223 +22,200 @@ body {
   color: var(--text);
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 40px 16px;
+  justify-content: center;
+  padding: 24px 16px;
 }
 
-/* ── 메인 카드 ── */
+/* ── 카드 ── */
 .container {
   background: var(--card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 2px 16px rgba(0,0,0,.08);
-  padding: 40px 36px 36px;
+  box-shadow: var(--shadow);
+  padding: 44px 40px 36px;
   width: 100%;
-  max-width: 480px;
+  max-width: 460px;
   position: relative;
 }
+
+/* ── 타이틀 ── */
+.container h1 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 22px;
+  letter-spacing: -.4px;
+}
+
+/* ── 비로그인 화면 ── */
+.guest-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+.btn-full {
+  width: 100%;
+  padding: 14px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+.btn-full:hover { background: var(--brand-hover); }
 
 /* ── 로그인 상태 ── */
 .login-status {
   position: absolute;
   top: 16px;
   right: 16px;
-  font-size: 13px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
-.login-btn {
-  padding: 5px 12px;
-  background: var(--brand);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background .15s;
-}
-.login-btn:hover { background: var(--brand-hover); }
-
-.logout-btn {
-  padding: 5px 10px;
-  background: var(--danger);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background .15s;
-}
-.logout-btn:hover { opacity: .85; }
-
-.user-name {
-  font-weight: 600;
-  color: var(--brand);
-  font-size: 13px;
-}
-
+.user-name  { font-size: 13px; font-weight: 700; color: var(--text); }
 .admin-badge {
-  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
   background: var(--brand);
   color: #fff;
-  font-size: 11px;
-  padding: 2px 7px;
   border-radius: 10px;
-  font-weight: 700;
 }
-
-/* ── 타이틀 ── */
-.container h1 {
-  font-size: 22px;
+.logout-btn {
+  font-size: 12px;
   font-weight: 700;
-  color: var(--brand);
-  margin-bottom: 28px;
-  margin-top: 8px;
+  padding: 4px 10px;
+  background: #f5f5f5;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
 }
+.logout-btn:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
 /* ── 입력 그룹 ── */
 .input-group {
   position: relative;
   margin-bottom: 14px;
 }
-
 #longUrl {
   width: 100%;
-  padding: 12px 80px 12px 14px;
+  padding: 13px 80px 13px 14px;
   font-size: 14px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  transition: border-color .2s;
   font-family: inherit;
-  background: #fafbfc;
+  background: #fafafa;
+  transition: border-color .2s;
+  color: var(--text);
 }
-#longUrl:focus {
-  border-color: var(--brand);
-  background: #fff;
-  outline: none;
-}
+#longUrl:focus { border-color: var(--brand); background: #fff; outline: none; }
+#longUrl::placeholder { color: #bbb; }
 
 #shortenBtn {
   position: absolute;
   right: 6px;
   top: 6px;
-  padding: 7px 14px;
+  padding: 7px 16px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   background: var(--brand);
   color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: background .15s;
   font-family: inherit;
+  transition: background .15s;
+  letter-spacing: -.2px;
 }
-#shortenBtn:hover { background: var(--brand-hover); }
+#shortenBtn:hover  { background: var(--brand-hover); }
+#shortenBtn:disabled { opacity: .5; cursor: default; }
 
 /* ── 도메인 선택 ── */
-.domain-group {
-  margin-bottom: 14px;
-}
+.domain-group { margin-bottom: 16px; }
 .domain-group label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--muted);
-  margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: .4px;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
 }
 #domainSelect {
   width: 100%;
   padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-family: inherit;
-  background: #fafbfc;
+  background: #fafafa;
   color: var(--text);
   cursor: pointer;
   transition: border-color .2s;
-  appearance: auto;
 }
-#domainSelect:focus {
-  border-color: var(--brand);
-  background: #fff;
-  outline: none;
-}
+#domainSelect:focus { border-color: var(--brand); background: #fff; outline: none; }
 
 /* ── 결과 박스 ── */
 .result {
-  background: #f0f4ff;
-  border: 1px solid #c5d8ff;
+  background: #f8f8f8;
+  border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin: 14px 0;
+  margin-bottom: 16px;
 }
-
 #shortUrl {
   color: var(--brand);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   word-break: break-all;
   flex: 1;
 }
-
 #copyBtn {
   padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   background: var(--brand);
   color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background .15s;
   font-family: inherit;
+  transition: background .15s;
   flex-shrink: 0;
 }
 #copyBtn:hover { background: var(--brand-hover); }
 
 /* ── 하단 버튼 ── */
-.bottom-nav {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-  justify-content: center;
-}
-
-.dashboard-btn,
-.multiple-btn {
-  background: #fff;
-  color: var(--brand);
-  border: 1.5px solid var(--brand);
+.bottom-nav { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.btn-outline {
   padding: 8px 20px;
-  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  text-decoration: none;
-  transition: all .15s;
   font-family: inherit;
+  transition: all .15s;
 }
-.dashboard-btn:hover,
-.multiple-btn:hover {
-  background: var(--brand);
-  color: #fff;
-}
+.btn-outline:hover { border-color: var(--brand); background: var(--brand); color: #fff; }
 
-/* ── 복사 알림 ── */
+/* ── 알림 토스트 ── */
 .copy-notification {
   position: fixed;
   bottom: 32px;
@@ -250,195 +226,22 @@ body {
   padding: 10px 22px;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0,0,0,.18);
-  animation: fadeInOut 2s ease-in-out;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  animation: fadeInUp .22s ease-out;
   z-index: 9999;
   white-space: nowrap;
+  font-family: 'Pretendard', sans-serif;
 }
 .copy-notification.error { background: var(--danger); }
 
-@keyframes fadeInOut {
-  0%   { opacity: 0; transform: translate(-50%, 12px); }
-  12%  { opacity: 1; transform: translate(-50%, 0); }
-  88%  { opacity: 1; transform: translate(-50%, 0); }
-  100% { opacity: 0; transform: translate(-50%, 12px); }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
-/* ── Multiple URL 페이지 ── */
-.multiple-container {
-  max-width: 600px;
-  width: 100%;
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  box-shadow: 0 2px 16px rgba(0,0,0,.08);
-  padding: 36px;
-  max-height: 85vh;
-  overflow-y: auto;
+/* ── 반응형 ── */
+@media (max-width: 520px) {
+  .container { padding: 36px 20px 28px; }
+  .login-status { top: 12px; right: 12px; }
 }
-.multiple-container .url-list {
-  margin: 18px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.multiple-container .url-input-group {
-  display: flex;
-  gap: 8px;
-}
-.multiple-container .url-input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1.5px solid var(--border);
-  border-radius: 7px;
-  font-size: 14px;
-  font-family: inherit;
-  background: #fafbfc;
-}
-.multiple-container .url-input:focus {
-  border-color: var(--brand);
-  background: #fff;
-  outline: none;
-}
-.multiple-container .remove-url {
-  padding: 10px 14px;
-  background: var(--danger);
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  transition: opacity .15s;
-  font-family: inherit;
-}
-.multiple-container .remove-url:hover { opacity: .85; }
-.multiple-container .add-url {
-  width: 100%;
-  padding: 11px;
-  background: var(--success);
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  margin: 16px 0;
-  transition: opacity .15s;
-  font-family: inherit;
-}
-.multiple-container .add-url:hover { opacity: .85; }
-.multiple-container #shortenBtn {
-  width: 100%;
-  padding: 12px;
-  background: var(--brand);
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 24px;
-  transition: background .15s;
-  position: static;
-  transform: none;
-  font-family: inherit;
-}
-.multiple-container #shortenBtn:hover { background: var(--brand-hover); }
-.multiple-container .result-list { margin: 16px 0; }
-.multiple-container .result-item {
-  background: #f0f4ff;
-  border: 1px solid #c5d8ff;
-  padding: 12px 14px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-.multiple-container .copy-btn {
-  background: var(--brand);
-  color: #fff;
-  border: none;
-  padding: 7px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  transition: background .15s;
-  white-space: nowrap;
-  font-family: inherit;
-}
-.multiple-container .copy-btn:hover { background: var(--brand-hover); }
-.multiple-container .bottom-nav {
-  position: sticky;
-  bottom: 16px;
-  background: var(--card-bg);
-  padding-top: 12px;
-  justify-content: center;
-}
-
-@media (max-width: 600px) {
-  .container, .multiple-container { padding: 28px 18px; }
-  .multiple-container .url-input-group { flex-direction: column; }
-  .multiple-container .remove-url { width: 100%; }
-  .multiple-container .result-item { flex-direction: column; gap: 8px; text-align: center; }
-  .multiple-container .copy-btn { width: 100%; }
-}
-
-/* ── 비밀번호 모달 ── */
-.password-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.35);
-  z-index: 2000;
-  justify-content: center;
-  align-items: center;
-}
-.password-modal.show { display: flex !important; }
-.password-modal-content {
-  background: #fff;
-  border-radius: 12px;
-  padding: 30px 26px 22px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.15);
-  min-width: 320px;
-  max-width: 90vw;
-  text-align: center;
-}
-.password-modal h2 {
-  margin: 0 0 16px;
-  color: var(--text);
-  font-size: 1.3rem;
-  font-weight: 700;
-}
-.password-input {
-  width: 100%;
-  padding: 11px 13px;
-  margin-bottom: 18px;
-  border: 1.5px solid var(--brand);
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: inherit;
-  box-sizing: border-box;
-}
-.password-input:focus { outline: none; }
-.password-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.password-buttons button {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 7px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity .15s;
-}
-.password-buttons .submit-btn { background: var(--brand); color: #fff; }
-.password-buttons .cancel-btn { background: #e5e7eb; color: var(--text); }
-.password-buttons button:hover { opacity: .85; }

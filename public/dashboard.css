@@ -4,8 +4,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --brand: #1565c0;
-  --brand-hover: #0d47a1;
+  --brand: #111111;
+  --brand-hover: #333333;
   --danger: #e53935;
   --success: #43a047;
   --bg: #f5f7fa;
