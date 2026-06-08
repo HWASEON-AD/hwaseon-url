@@ -369,6 +369,10 @@ app.get('/api/account/stats', (req, res) => {
 });
 
 /** 관리자 사용자 목록 */
+app.get('/api/admin/auth', (req, res) => {
+  res.json({ success: true, isAdmin: !!(req.session?.user?.isAdmin) });
+});
+
 app.get('/api/admin/users', (req, res) => {
   if (!ensureAdmin(req, res)) return;
   res.json({ success: true, users: loadUsers().users });
