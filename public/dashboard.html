@@ -30,6 +30,13 @@
     <button id="deleteAllBtn" class="btn btn--danger btn--sm">전체 삭제</button>
     <button id="downloadExcelBtn" class="btn btn--outline btn--sm">엑셀 다운로드</button>
     <button id="bulkCreateBtn" class="btn btn--primary btn--sm">다중 URL 등록</button>
+    <!-- 선택 항목 액션 (선택 0개일 때 숨김) -->
+    <span id="selectionActions" style="display:none;align-items:center;gap:10px;">
+      <span id="checkCountInfo" style="font-size:13px;font-weight:700;color:var(--brand);"></span>
+      <button id="deleteSelectedBtn" class="btn btn--danger btn--sm">선택 삭제</button>
+      <button id="downloadSelectedBtn" class="btn btn--success btn--sm">선택 다운로드</button>
+      <button id="clearSelectionBtn" class="btn btn--ghost btn--sm">선택 해제</button>
+    </span>
   </div>
 
   <!-- 검색 -->
@@ -46,7 +53,7 @@
     <table class="dashboard-table">
       <thead>
         <tr>
-          <th style="width:4%"></th>
+          <th style="width:3%"><input type="checkbox" id="selectAllChk" title="전체 선택" style="cursor:pointer;width:15px;height:15px;" /></th>
           <th style="width:13%">단축 URL</th>
           <th style="width:20%">원본 URL</th>
           <th style="width:10%;cursor:pointer;user-select:none;" onclick="toggleSort('domain')">도메인<span id="sort-domain"> ⇅</span></th>
@@ -55,7 +62,7 @@
           <th style="width:8%;cursor:pointer;user-select:none;" onclick="toggleSort('username')">사용자<span id="sort-username"> ⇅</span></th>
           <th style="width:17%;cursor:pointer;user-select:none;" onclick="toggleSort('memo')">메모<span id="sort-memo"> ⇅</span></th>
           <th style="width:10%">관리</th>
-          <th style="width:8%">상세</th>
+          <th style="width:9%">상세</th>
         </tr>
       </thead>
       <tbody id="dashboard-tbody"></tbody>
@@ -77,9 +84,24 @@
       <div class="modal-title">다중 URL 등록</div>
       <button class="modal-close" onclick="document.getElementById('bulkModal').style.display='none'">&times;</button>
     </div>
-    <p style="font-size:13px;color:#888;margin-bottom:12px;">한 줄에 URL 하나씩 입력하세요. 도메인은 아래에서 선택합니다.</p>
+    <p style="font-size:13px;color:#888;margin-bottom:10px;">직접 입력은 한 줄에 URL 하나씩 입력하세요. 메모를 함께 등록하려면 엑셀 업로드를 이용하세요.</p>
+
+    <!-- 엑셀 업로드 영역 -->
+    <div style="border:1.5px dashed #d0d0d0;border-radius:8px;padding:14px;margin-bottom:14px;background:#fafbfc;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:13px;color:#555;">
+          <strong>엑셀로 등록</strong> — A열: URL, B열: 메모 (1행: 항목명)
+        </div>
+        <button type="button" class="btn btn--outline btn--xs" id="downloadTemplateBtn">예시 엑셀 다운로드</button>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <input type="file" id="bulkExcelFile" accept=".xlsx, .xls" style="font-size:12px;" />
+        <span id="bulkExcelStatus" style="font-size:12px;color:#888;"></span>
+      </div>
+    </div>
+
     <textarea id="bulkUrlInput" placeholder="https://example.com/page1&#10;https://example.com/page2&#10;https://example.com/page3"
-      style="width:100%;height:160px;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+      style="width:100%;height:130px;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
     <div style="margin:12px 0 16px;">
       <label style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;">도메인 선택</label>
       <select id="bulkDomainSelect" style="width:100%;margin-top:6px;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;background:#fafafa;"></select>

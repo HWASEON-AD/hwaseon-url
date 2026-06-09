@@ -6,6 +6,11 @@ let currentSearchQuery = '';
 let currentPage = 1;
 let currentSort = { field: null, dir: 'asc' }; // field: 'domain'|'memo'|'username'
 
+// ===== 체크박스 선택 상태 =====
+let checkedCodes = new Set();   // 선택된 shortCode 집합
+let isDragging = false;         // 드래그 진행 여부
+let dragState = true;           // 드래그 중 적용할 체크 상태 (true=체크, false=해제)
+
 // 도메인별 배지 색상
 const DOMAIN_COLORS = {
     'hwaseon-url': '#3b82f6',
@@ -81,12 +86,14 @@ function buildRowHtml(url) {
     const memoDisplay = memo || '<span style="color:#ccc;font-size:12px;">메모 없음</span>';
     const displayUsername = url.username || '비회원';
 
+    const isChecked = checkedCodes.has(url.shortCode) ? 'checked' : '';
     return `
         <td style="text-align:center;">
-            <button class="btn-copy-small" onclick="copyShort('${escapeHtml(url.shortUrl)}')">복사</button>
+            <input type="checkbox" class="row-chk" data-code="${escapeHtml(url.shortCode)}" ${isChecked} style="cursor:pointer;width:15px;height:15px;" />
         </td>
         <td class="url-cell" style="font-size:12px;">
             <a href="${escapeHtml(url.shortUrl)}" target="_blank" class="url-link">${highlight(url.shortUrl, currentSearchQuery)}</a>
+            <button class="btn-copy-small" style="margin-left:6px;" onclick="copyShort('${escapeHtml(url.shortUrl)}')">복사</button>
         </td>
         <td class="url-cell" style="font-size:12px;max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${highlight(url.longUrl, currentSearchQuery)}</td>
         <td style="text-align:center;">${badge}</td>
@@ -191,22 +198,8 @@ function goPage(n) {
     window.scrollTo(0, 0);
 }
 
-// ===== 필터 + 렌더 =====
-function filterAndRender() {
-    const searchEl = document.getElementById('searchInput');
-    const newQuery = searchEl ? searchEl.value.trim() : '';
-
-    // 검색어 변경 시 항상 1페이지로 리셋
-    if (newQuery !== currentSearchQuery) {
-        currentPage = 1;
-    }
-    currentSearchQuery = newQuery;
-
-    renderDomainTabs();
-
-    const tbody = document.getElementById('dashboard-tbody');
-    if (!tbody) return;
-
+// ===== 현재 필터(도메인+검색+정렬) 기준 전체 목록 반환 =====
+function getFilteredUrls() {
     const q = currentSearchQuery.toLowerCase();
     let filtered = allUrls.filter(url => {
         if (currentDomainFilter !== 'all' && (url.domain || '') !== currentDomainFilter) return false;
@@ -224,6 +217,26 @@ function filterAndRender() {
             return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
         });
     }
+    return filtered;
+}
+
+// ===== 필터 + 렌더 =====
+function filterAndRender() {
+    const searchEl = document.getElementById('searchInput');
+    const newQuery = searchEl ? searchEl.value.trim() : '';
+
+    // 검색어 변경 시 항상 1페이지로 리셋
+    if (newQuery !== currentSearchQuery) {
+        currentPage = 1;
+    }
+    currentSearchQuery = newQuery;
+
+    renderDomainTabs();
+
+    const tbody = document.getElementById('dashboard-tbody');
+    if (!tbody) return;
+
+    const filtered = getFilteredUrls();
 
     const totalFiltered = filtered.length;
     const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -234,6 +247,8 @@ function filterAndRender() {
         row.innerHTML = `<td colspan="10" style="text-align:center;padding:28px;color:#aaa;">표시할 URL이 없습니다.</td>`;
         tbody.appendChild(row);
         renderPagination(0);
+        bindCheckboxEvents();
+        updateCheckboxUI();
         return;
     }
     pageItems.forEach(url => {
@@ -243,6 +258,102 @@ function filterAndRender() {
     });
 
     renderPagination(totalFiltered);
+    bindCheckboxEvents();
+    updateCheckboxUI();
+}
+
+// ===== 체크박스 이벤트 바인딩 =====
+function bindCheckboxEvents() {
+    const rowChks = document.querySelectorAll('.row-chk');
+    if (rowChks.length === 0) return;
+
+    rowChks.forEach(chk => {
+        const code = chk.dataset.code;
+        // 렌더 시 전역 상태 복원
+        chk.checked = checkedCodes.has(code);
+
+        // 클릭 토글
+        chk.addEventListener('change', () => {
+            if (chk.checked) checkedCodes.add(code);
+            else checkedCodes.delete(code);
+            updateCheckboxUI();
+        });
+
+        // 드래그 다중선택 시작
+        chk.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // 기본 토글 방지 (직접 처리)
+            isDragging = true;
+            dragState = !checkedCodes.has(code); // 새 상태로 고정
+            applyDragToCode(code);
+        });
+
+        // 드래그 중 진입 (마우스가 체크박스 위로 들어옴)
+        chk.addEventListener('mouseenter', () => {
+            if (isDragging) applyDragToCode(code);
+        });
+    });
+}
+
+// ===== 드래그 상태를 특정 코드에 적용 =====
+function applyDragToCode(code) {
+    if (dragState) checkedCodes.add(code);
+    else checkedCodes.delete(code);
+    const chk = document.querySelector(`.row-chk[data-code="${CSS.escape(code)}"]`);
+    if (chk) chk.checked = dragState;
+    updateCheckboxUI();
+}
+
+// ===== 체크박스 UI 동기화 =====
+function updateCheckboxUI() {
+    const count = checkedCodes.size;
+
+    // 선택 인디케이터 + 액션 버튼
+    const actions = document.getElementById('selectionActions');
+    const info = document.getElementById('checkCountInfo');
+    if (actions) actions.style.display = count > 0 ? 'inline-flex' : 'none';
+    if (info) info.textContent = `${count}개 선택됨`;
+
+    // 전체선택 체크박스 상태 재계산 (현재 필터된 항목 기준)
+    const selectAll = document.getElementById('selectAllChk');
+    if (selectAll) {
+        const filteredCodes = getFilteredUrls().map(u => u.shortCode);
+        const selectedInFilter = filteredCodes.filter(c => checkedCodes.has(c)).length;
+        if (filteredCodes.length > 0 && selectedInFilter === filteredCodes.length) {
+            selectAll.checked = true;
+            selectAll.indeterminate = false;
+        } else if (selectedInFilter > 0) {
+            selectAll.checked = false;
+            selectAll.indeterminate = true;
+        } else {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+        }
+    }
+}
+
+// ===== 전체선택 토글 (현재 필터된 전체 항목 대상) =====
+function toggleSelectAll(checked) {
+    const filteredCodes = getFilteredUrls().map(u => u.shortCode);
+    if (checked) filteredCodes.forEach(c => checkedCodes.add(c));
+    else filteredCodes.forEach(c => checkedCodes.delete(c));
+    // 현재 페이지 DOM 체크박스 갱신
+    document.querySelectorAll('.row-chk').forEach(chk => {
+        chk.checked = checkedCodes.has(chk.dataset.code);
+    });
+    updateCheckboxUI();
+}
+
+// ===== 선택 해제 =====
+function clearSelection() {
+    checkedCodes.clear();
+    document.querySelectorAll('.row-chk').forEach(chk => { chk.checked = false; });
+    updateCheckboxUI();
+}
+
+// ===== 드래그 이벤트 등록 (1회) =====
+function initDragEvents() {
+    document.addEventListener('mouseup', () => { isDragging = false; });
+    window.addEventListener('blur', () => { isDragging = false; });
 }
 
 function clearSearch() {
@@ -297,8 +408,53 @@ function loadUrls() {
 function deleteUrl(shortCode) {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     fetch(`/urls/${shortCode}`, { method: 'DELETE', credentials: 'include' })
-        .then(r => { if (!r.ok) throw new Error(); loadUrls(); showToast('삭제됐습니다'); })
+        .then(r => { if (!r.ok) throw new Error(); checkedCodes.delete(shortCode); loadUrls(); showToast('삭제됐습니다'); })
         .catch(() => showToast('삭제 실패', 'error'));
+}
+
+// ===== 선택 삭제 (배치) =====
+async function deleteSelected() {
+    const codes = Array.from(checkedCodes);
+    if (codes.length === 0) { showToast('선택된 항목이 없습니다', 'error'); return; }
+    if (!confirm(`선택한 ${codes.length}개 URL을 삭제하시겠습니까?`)) return;
+    try {
+        const r = await fetch('/urls/batch-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ codes })
+        });
+        if (r.status === 401) { window.location.href = '/login'; return; }
+        if (!r.ok) throw new Error();
+        const data = await r.json();
+        checkedCodes.clear();
+        loadUrls();
+        showToast(`${data.deleted || 0}개 삭제됐습니다`);
+    } catch {
+        showToast('선택 삭제 실패', 'error');
+    }
+}
+
+// ===== 선택 다운로드 (URL+메모 엑셀) =====
+function downloadSelected() {
+    const codes = checkedCodes;
+    if (codes.size === 0) { showToast('선택된 항목이 없습니다', 'error'); return; }
+    // 현재 데이터와 교차 필터링
+    const selected = allUrls.filter(u => codes.has(u.shortCode));
+    if (selected.length === 0) { showToast('다운로드할 데이터가 없습니다', 'error'); return; }
+
+    const wsData = [['URL', '메모']];
+    selected.forEach(u => wsData.push([u.shortUrl || '', u.memo || '']));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 40 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws, '선택URL');
+
+    const now = new Date();
+    const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    XLSX.writeFile(wb, `선택URL_${ymd}.xlsx`);
+    showToast(`${selected.length}개 URL을 다운로드했습니다`);
 }
 
 // ===== 복사 =====
@@ -311,6 +467,9 @@ function copyShort(url) {
 function copyToClipboard(url) { copyShort(url); }
 
 // ===== 다중 URL 등록 =====
+// 엑셀 업로드로 파싱된 {url, memo} 목록. 비어있으면 textarea 사용
+let bulkExcelRows = [];
+
 async function openBulkModal() {
     // 도메인 목록 로드
     try {
@@ -322,19 +481,83 @@ async function openBulkModal() {
         }
     } catch {}
 
+    bulkExcelRows = [];
     document.getElementById('bulkUrlInput').value = '';
+    const fileInput = document.getElementById('bulkExcelFile');
+    if (fileInput) fileInput.value = '';
+    const status = document.getElementById('bulkExcelStatus');
+    if (status) status.textContent = '';
     document.getElementById('bulkResult').style.display = 'none';
     document.getElementById('bulkResult').innerHTML = '';
     document.getElementById('bulkModal').style.display = 'flex';
     document.getElementById('bulkUrlInput').focus();
 }
 
-async function submitBulkCreate() {
-    const raw = document.getElementById('bulkUrlInput').value;
-    const domain = document.getElementById('bulkDomainSelect').value;
-    const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+// 예시 엑셀 템플릿 다운로드 (A열=URL, B열=메모 / 1행 항목명, 2행 예시)
+function downloadBulkTemplate() {
+    const wsData = [
+        ['URL', '메모'],
+        ['https://example.com', '예시 메모']
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 40 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'URL목록');
+    XLSX.writeFile(wb, 'URL등록_템플릿.xlsx');
+}
 
-    if (lines.length === 0) { showToast('URL을 입력하세요', 'error'); return; }
+// 엑셀 파일 파싱 → bulkExcelRows 채우기 (A열=URL, B열=메모, 1행=헤더)
+function handleBulkExcelFile(file) {
+    const status = document.getElementById('bulkExcelStatus');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            // header:1 → 행 배열. 1행(헤더) 제외
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+            bulkExcelRows = [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i] || [];
+                const url = (row[0] != null ? String(row[0]) : '').trim();
+                const memo = (row[1] != null ? String(row[1]) : '').trim();
+                if (url) bulkExcelRows.push({ url, memo });
+            }
+            if (bulkExcelRows.length === 0) {
+                if (status) { status.textContent = '유효한 URL이 없습니다.'; status.style.color = '#e53935'; }
+                showToast('엑셀에서 URL을 찾을 수 없습니다', 'error');
+                return;
+            }
+            if (status) { status.textContent = `${bulkExcelRows.length}개 URL 인식됨`; status.style.color = '#22c55e'; }
+            showToast(`엑셀에서 ${bulkExcelRows.length}개 URL을 읽었습니다`);
+        } catch (err) {
+            console.error('엑셀 파싱 오류:', err);
+            bulkExcelRows = [];
+            if (status) { status.textContent = '엑셀 처리 오류'; status.style.color = '#e53935'; }
+            showToast('엑셀 파일 처리 중 오류가 발생했습니다', 'error');
+        }
+    };
+    reader.onerror = () => {
+        if (status) { status.textContent = '파일 읽기 오류'; status.style.color = '#e53935'; }
+        showToast('파일을 읽는 중 오류가 발생했습니다', 'error');
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+async function submitBulkCreate() {
+    const domain = document.getElementById('bulkDomainSelect').value;
+
+    // 엑셀 업로드가 있으면 우선 사용, 없으면 textarea 사용
+    let items = [];
+    if (bulkExcelRows.length > 0) {
+        items = bulkExcelRows.map(r => ({ url: r.url, memo: r.memo }));
+    } else {
+        const raw = document.getElementById('bulkUrlInput').value;
+        items = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0).map(l => ({ url: l, memo: '' }));
+    }
+
+    if (items.length === 0) { showToast('URL을 입력하세요', 'error'); return; }
 
     const btn = document.getElementById('bulkSubmitBtn');
     btn.disabled = true;
@@ -345,15 +568,15 @@ async function submitBulkCreate() {
     resultEl.innerHTML = '<div style="color:#888;font-size:13px;">처리 중…</div>';
 
     const results = [];
-    for (const rawUrl of lines) {
-        let url = rawUrl;
+    for (const item of items) {
+        let url = item.url;
         if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
         try {
             const res = await fetch('/shorten', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ url, domain })
+                body: JSON.stringify({ url, domain, memo: item.memo || '' })
             });
             if (res.status === 401) { window.location.href = '/login'; return; }
             if (!res.ok) throw new Error(await res.text());
@@ -583,10 +806,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // 다중 URL 등록
     document.getElementById('bulkCreateBtn')?.addEventListener('click', openBulkModal);
     document.getElementById('bulkSubmitBtn')?.addEventListener('click', submitBulkCreate);
+    document.getElementById('downloadTemplateBtn')?.addEventListener('click', downloadBulkTemplate);
+    document.getElementById('bulkExcelFile')?.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) handleBulkExcelFile(file);
+    });
 
     // 모달 외부 클릭 닫기
     document.getElementById('bulkModal')?.addEventListener('click', e => {
         if (e.target === document.getElementById('bulkModal'))
             document.getElementById('bulkModal').style.display = 'none';
     });
+
+    // 체크박스: 전체선택, 선택 삭제/다운로드/해제
+    document.getElementById('selectAllChk')?.addEventListener('change', e => {
+        toggleSelectAll(e.target.checked);
+    });
+    document.getElementById('deleteSelectedBtn')?.addEventListener('click', deleteSelected);
+    document.getElementById('downloadSelectedBtn')?.addEventListener('click', downloadSelected);
+    document.getElementById('clearSelectionBtn')?.addEventListener('click', clearSelection);
+
+    // 드래그 다중선택 이벤트 (1회 등록)
+    initDragEvents();
 });

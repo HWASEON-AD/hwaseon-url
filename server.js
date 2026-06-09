@@ -529,7 +529,7 @@ app.get('/urls', (req, res) => {
 
 app.post('/shorten', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
-  const { url, domain } = req.body || {};
+  const { url, domain, memo } = req.body || {};
   if (!url) return res.status(400).json({ error: 'URL 누락' });
   try {
     const parsed = new URL(url);
@@ -564,7 +564,7 @@ app.post('/shorten', (req, res) => {
     logs: [],
     userId: req.session.user ? req.session.user.id : null,
     username: req.session.user ? req.session.user.username : '비회원',
-    memo: ''
+    memo: (typeof memo === 'string' ? memo.trim() : '').slice(0, 120)
   };
   saveDB(db);
 
@@ -583,6 +583,32 @@ app.delete('/urls/:shortCode', (req, res) => {
   delete db[code];
   saveDB(db);
   res.json({ message: '삭제 완료' });
+});
+
+// 선택 삭제 (배치) — 로그인 + 소유권(또는 관리자) 검증
+app.post('/urls/batch-delete', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
+  const { codes } = req.body || {};
+  if (!Array.isArray(codes) || codes.length === 0) {
+    return res.status(400).json({ error: '삭제할 항목이 없습니다.' });
+  }
+
+  const db = loadDB();
+  const userId = req.session.user.id;
+  const isAdmin = !!req.session.user.isAdmin;
+  let deleted = 0;
+  let skipped = 0;
+
+  for (const code of codes) {
+    if (!db[code]) { skipped++; continue; }
+    // 권한 없는 항목은 건너뜀
+    if (!isAdmin && db[code].userId !== userId) { skipped++; continue; }
+    delete db[code];
+    deleted++;
+  }
+
+  saveDB(db);
+  res.json({ success: true, deleted, skipped });
 });
 
 // 이슈 1: 메모 수정 — 로그인 + 소유권(또는 관리자) 검증
