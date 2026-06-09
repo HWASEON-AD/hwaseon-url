@@ -10,6 +10,7 @@ let currentSort = { field: null, dir: 'asc' }; // field: 'domain'|'memo'|'userna
 let checkedCodes = new Set();   // 선택된 shortCode 집합
 let isDragging = false;         // 드래그 진행 여부
 let dragState = true;           // 드래그 중 적용할 체크 상태 (true=체크, false=해제)
+let dragStartCode = null;       // 드래그 시작 체크박스의 code
 
 // 도메인별 배지 색상
 const DOMAIN_COLORS = {
@@ -272,24 +273,29 @@ function bindCheckboxEvents() {
         // 렌더 시 전역 상태 복원
         chk.checked = checkedCodes.has(code);
 
-        // 클릭 토글
+        // 단순 클릭 → change 이벤트로 처리 (브라우저 기본 toggle에 맡김)
         chk.addEventListener('change', () => {
             if (chk.checked) checkedCodes.add(code);
             else checkedCodes.delete(code);
             updateCheckboxUI();
         });
 
-        // 드래그 다중선택 시작
-        chk.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // 기본 토글 방지 (직접 처리)
-            isDragging = true;
-            dragState = !checkedCodes.has(code); // 새 상태로 고정
-            applyDragToCode(code);
+        // pointerdown: 드래그 시작점 기록만 (e.preventDefault 절대 금지)
+        chk.addEventListener('pointerdown', () => {
+            isDragging = false;
+            dragStartCode = code;
+            dragState = !checkedCodes.has(code);
         });
 
-        // 드래그 중 진입 (마우스가 체크박스 위로 들어옴)
-        chk.addEventListener('mouseenter', () => {
-            if (isDragging) applyDragToCode(code);
+        // pointerenter: 왼쪽 버튼 누른 채 다른 체크박스로 진입하면 드래그
+        chk.addEventListener('pointerenter', (e) => {
+            if (e.buttons !== 1) return;
+            if (!dragStartCode || dragStartCode === code) return;
+            if (!isDragging) {
+                isDragging = true;
+                applyDragToCode(dragStartCode); // 시작 체크박스에도 적용
+            }
+            applyDragToCode(code);
         });
     });
 }
@@ -352,8 +358,8 @@ function clearSelection() {
 
 // ===== 드래그 이벤트 등록 (1회) =====
 function initDragEvents() {
-    document.addEventListener('mouseup', () => { isDragging = false; });
-    window.addEventListener('blur', () => { isDragging = false; });
+    document.addEventListener('pointerup', () => { isDragging = false; dragStartCode = null; });
+    window.addEventListener('blur', () => { isDragging = false; dragStartCode = null; });
 }
 
 function clearSearch() {
