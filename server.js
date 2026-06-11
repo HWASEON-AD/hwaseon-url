@@ -688,6 +688,26 @@ app.get('/:shortCode', (req, res, next) => {
 });
 
 /** =========================
+ *  클릭수 조회 API (x-admin-key 인증) — amos-dashboard 연동용
+ *  GET /api/stats/:shortCode
+ *  Header: x-admin-key: {ADMIN_KEY}
+ *  ========================= */
+app.get('/api/stats/:shortCode', (req, res) => {
+  const key = req.headers['x-admin-key'];
+  if (key !== ADMIN_KEY) return res.status(403).json({ error: '권한 없음' });
+  const db = loadDB();
+  const code = req.params.shortCode;
+  if (!db[code]) return res.status(404).json({ error: '없음' });
+  res.json({
+    shortCode: code,
+    totalVisits: db[code].totalVisits || 0,
+    todayVisits: db[code].todayVisits || 0,
+    createdAt: db[code].createdAt,
+    memo: db[code].memo || ''
+  });
+});
+
+/** =========================
  *  전체 삭제
  *  ========================= */
 app.delete('/delete-all', (req, res) => {
